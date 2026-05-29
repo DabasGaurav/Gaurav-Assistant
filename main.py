@@ -1,6 +1,14 @@
-import asyncioimport os
-from aiogram import Bot, Dispatcherfrom aiogram.types import Messagefrom dotenv import load_dotenvfrom anthropic import Anthropic
-from memory import save_message, load_memoryfrom knowledge import search_knowledge
+import asyncio
+import os
+
+from aiogram import Bot, Dispatcher
+from aiogram.types import Message
+from dotenv import load_dotenv
+from anthropic import Anthropic
+
+from memory import save_message, load_memory
+from knowledge import search_knowledge
+
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 client = Anthropic(api_key=ANTHROPIC_API_KEY)

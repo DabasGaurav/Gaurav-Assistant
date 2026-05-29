@@ -31,28 +31,23 @@ async def handle_message(message: Message):
     user_text = message.text
 
     if user_text.startswith("/search"):
+        query = user_text.replace("/search", "").strip()
 
-    query = user_text.replace("/search", "").strip()
+        results = search_knowledge(query)
 
-    results = search_knowledge(query)
+        if len(results) == 0:
+            await message.answer("No results found.")
+            return
 
-    if len(results) == 0:
-        await message.answer("No results found.")
+        response_text = ""
+
+        for result in results[:3]:
+            response_text += f"\nFILE: {result['file']}\n\n"
+            response_text += result["content"]
+            response_text += "\n\n-------------------\n\n"
+
+        await message.answer(response_text[:4000])
         return
-
-    response_text = ""
-
-    for result in results[:3]:
-
-        response_text += f"\nFILE: {result['file']}\n\n"
-
-        response_text += result["content"]
-
-        response_text += "\n\n-------------------\n\n"
-
-    await message.answer(response_text[:4000])
-
-    return
 
 
     user_id = str(message.from_user.id)

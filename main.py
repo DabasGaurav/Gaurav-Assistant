@@ -1,94 +1,82 @@
-import asyncio
-import os
-
-from memory import save_message, load_memory
-from aiogram import Bot, Dispatcher
-from aiogram.types import Message
-from dotenv import load_dotenv
-from anthropic import Anthropic
-from knowledge import search_knowledge
-
-# Load keys from .env
+import asyncioimport os
+from aiogram import Bot, Dispatcherfrom aiogram.types import Messagefrom dotenv import load_dotenvfrom anthropic import Anthropic
+from memory import save_message, load_memoryfrom knowledge import search_knowledge
 load_dotenv()
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+client = Anthropic(api_key=ANTHROPIC_API_KEY)
+bot = Bot(token=TELEGRAM_BOT_TOKEN)dp = Dispatcher()
+def get_knowledge_context(query):
+try:
 
-# Get keys
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+    results = search_knowledge(query)
 
-# Claude client
-client = Anthropic(
-    api_key=ANTHROPIC_API_KEY
+    if not results:
+        return ""
+
+    context = ""
+
+    for result in results[:3]:
+
+        context += result["content"]
+        context += "\n\n"
+
+    return context[:12000]
+
+except Exception:
+    return ""
+@dp.message()async def handle_message(message: Message):
+user_text = message.text
+
+if not user_text:
+    return
+
+user_id = str(message.from_user.id)
+
+history = load_memory(user_id)
+
+knowledge_context = get_knowledge_context(user_text)
+
+await bot.send_chat_action(
+    chat_id=message.chat.id,
+    action="typing"
 )
 
-# Telegram bot
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
-dp = Dispatcher()
+try:
 
-# Handle incoming messages
-@dp.message()
-async def handle_message(message: Message):
+    messages = history.copy()
 
-    user_text = message.text
+    if knowledge_context:
 
-    if user_text.startswith("/search"):
-        query = user_text.replace("/search", "").strip()
+        messages.append({
+            "role": "user",
+            "content": knowledge_context
+        })
 
-        results = search_knowledge(query)
+    messages.append({
+        "role": "user",
+        "content": user_text
+    })
 
-        if len(results) == 0:
-            await message.answer("No results found.")
-            return
-
-        response_text = ""
-
-        for result in results[:3]:
-            response_text += f"\nFILE: {result['file']}\n\n"
-            response_text += result["content"]
-            response_text += "\n\n-------------------\n\n"
-
-        await message.answer(response_text[:4000])
-        return
-
-
-    user_id = str(message.from_user.id)
-    history = load_memory(user_id)
-
-    # show "typing..."
-    await bot.send_chat_action(
-        chat_id=message.chat.id,
-        action="typing"
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1000,
+        messages=messages
     )
 
-    try:
+    reply = response.content[0].text
 
-        # Ask Claude
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=500,
-            messages=history + [
-                {
-                    "role": "user",
-                    "content": user_text
-                }
-            ]
-        )
+    save_message(user_id, "user", user_text)
+    save_message(user_id, "assistant", reply)
 
-        # Extract Claude reply
-        reply = response.content[0].text
-        save_message(user_id, "user", user_text)
-        save_message(user_id, "assistant", reply)
+    await message.answer(reply)
 
-        # Send reply back
-        await message.answer(reply)
+except Exception as e:
 
-    except Exception as e:
-        await message.answer(f"Error: {str(e)}")
-
-# Start bot
+    await message.answer(
+        f"Error: {str(e)}"
+    )
 async def main():
-    print("Bot running...")
-    await dp.start_polling(bot)
+print("Bot running...")
 
-# Run app
-if __name__ == "__main__":
-    asyncio.run(main())
+await dp.start_polling(bot)
+if name == "main":asyncio.run(main())

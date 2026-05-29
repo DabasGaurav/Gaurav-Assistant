@@ -4,70 +4,56 @@ from docx import Document
 
 ONE_DRIVE_PATH = "/Users/gauravdabas/Library/CloudStorage/OneDrive-IndianSchoolofBusiness"
 
+
 def read_pdf(path):
+    text = ""
 
-```
-text = ""
+    try:
+        reader = PdfReader(path)
 
-try:
+        for page in reader.pages:
+            extracted = page.extract_text()
 
-    reader = PdfReader(path)
+            if extracted:
+                text += extracted + "\n"
 
-    for page in reader.pages:
-        extracted = page.extract_text()
+    except Exception:
+        pass
 
-        if extracted:
-            text += extracted + "\n"
-
-except:
-    pass
-
-return text
-```
+    return text
 
 def read_docx(path):
+    text = ""
 
-```
-text = ""
+    try:
+        doc = Document(path)
 
-try:
+        for para in doc.paragraphs:
+            text += para.text + "\n"
 
-    doc = Document(path)
+    except Exception:
+        pass
 
-    for para in doc.paragraphs:
-        text += para.text + "\n"
-
-except:
-    pass
-
-return text
-```
+    return text
 
 def search_knowledge(query):
+    results = []
 
-```
-results = []
+    for root, dirs, files in os.walk(ONE_DRIVE_PATH):
+        for file in files:
+            full_path = os.path.join(root, file)
+            content = ""
 
-for root, dirs, files in os.walk(ONE_DRIVE_PATH):
+            if file.endswith(".pdf"):
+                content = read_pdf(full_path)
+            elif file.endswith(".docx"):
+                content = read_docx(full_path)
 
-    for file in files:
+            if query.lower() in content.lower():
+                results.append({
+                    "file": file,
+                    "content": content[:3000]
+                })
 
-        full_path = os.path.join(root, file)
+    return results
 
-        content = ""
-
-        if file.endswith(".pdf"):
-            content = read_pdf(full_path)
-
-        elif file.endswith(".docx"):
-            content = read_docx(full_path)
-
-        if query.lower() in content.lower():
-
-            results.append({
-                "file": file,
-                "content": content[:3000]
-            })
-
-return results
-```
